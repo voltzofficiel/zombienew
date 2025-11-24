@@ -15,9 +15,30 @@ end)
 objects = {}
 local usingOxTarget = Config.UseOxTarget and GetResourceState('ox_target') == 'started'
 local GetRandomLoot
+local cooldownMs = (Config.ObjectLootCooldown or 30) * 1000
+
+local function isObjectOnCooldown(obj)
+        local lastLoot = objects[obj]
+
+        if not lastLoot then
+                return false
+        end
+
+        local remaining = cooldownMs - (GetGameTimer() - lastLoot)
+
+        if remaining <= 0 then
+                objects[obj] = nil
+                return false
+        end
+
+        return remaining
+end
 
 local function performObjectLoot(obj)
-        if objects[obj] then
+        local remaining = isObjectOnCooldown(obj)
+
+        if remaining then
+                ESX.ShowNotification(('You can search again in %s seconds'):format(math.ceil(remaining / 1000)))
                 return
         end
 
@@ -37,7 +58,7 @@ local function performObjectLoot(obj)
                 ESX.ShowNotification('You not found nothing')
         end
 
-        objects[obj] = true
+        objects[obj] = GetGameTimer()
 end
 
 GetRandomLoot = function(lootTable, nothingChance)
@@ -81,14 +102,14 @@ if Config.ObjectDropLoot then
 				label = 'Search loot',
 				icon = 'fa-solid fa-box-open',
 				distance = 2.2,
-				canInteract = function(entity)
-					return not objects[entity]
-				end,
-				onSelect = function(data)
-					performObjectLoot(data.entity)
-				end
-			}
-		})
+                                canInteract = function(entity)
+                                        return not isObjectOnCooldown(entity)
+                                end,
+                                onSelect = function(data)
+                                        performObjectLoot(data.entity)
+                                end
+                        }
+                })
 	else
 		Citizen.CreateThread(function()
 			while true do
@@ -96,16 +117,16 @@ if Config.ObjectDropLoot then
 				for k,v in pairs(Config.ObjectsLoot) do
 					local player = GetPlayerPed(-1)
 					local distanceobject = 2.2
-					local obj = GetClosestObjectOfType(GetEntityCoords(player).x, GetEntityCoords(player).y, GetEntityCoords(player).z, distanceobject, v, false, true ,true)
-					local distance = GetDistanceBetweenCoords(GetEntityCoords(player), GetEntityCoords(obj), true)
-					if distance <= distanceobject then
-						local ObjectCoords = GetEntityCoords(obj)
-						if not objects[obj] then
-							ESX.Game.Utils.DrawText3D(ObjectCoords + vector3(0.0, 0.0, 0.5), '~c~PRESS ~b~[E]~c~ TO SEARCH', 1, 4)
-						end
-						if IsControlJustReleased(0, 38) then
-							performObjectLoot(obj)
-						end
+                                        local obj = GetClosestObjectOfType(GetEntityCoords(player).x, GetEntityCoords(player).y, GetEntityCoords(player).z, distanceobject, v, false, true ,true)
+                                        local distance = GetDistanceBetweenCoords(GetEntityCoords(player), GetEntityCoords(obj), true)
+                                        if distance <= distanceobject then
+                                                local ObjectCoords = GetEntityCoords(obj)
+                                                if not isObjectOnCooldown(obj) then
+                                                        ESX.Game.Utils.DrawText3D(ObjectCoords + vector3(0.0, 0.0, 0.5), '~c~PRESS ~b~[E]~c~ TO SEARCH', 1, 4)
+                                                end
+                                                if IsControlJustReleased(0, 38) then
+                                                        performObjectLoot(obj)
+                                                end
 					end
 				end
 			end
