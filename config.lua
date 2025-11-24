@@ -25,6 +25,9 @@ Config.ObjectsLoot = {
     'prop_box_ammo03a'
 }
 
+-- cooldown in seconds before a lootable object can be searched again
+Config.ObjectLootCooldown = 30
+
 Config.LootNothingChanceObject = 25 -- percentage chance to find nothing in lootable objects
 Config.ObjectLootItems = {
     { item = 'bread', min = 1, max = 3, chance = 40 },
